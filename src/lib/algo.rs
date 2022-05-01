@@ -29,58 +29,69 @@ fn decrypt_block(encrypted_block : [[u8;8];8] , dkv : [u8;64] , matrix : [[u8;8]
     decrypted_block
 }
 // encrypt image .
-pub fn encrypt_image(blocks : Vec<[[u8;8];8]> , dkv : [u8;64] ) -> Vec<[[u8;8];8]> {
+pub fn encrypt_image(mut blocks : Vec<[[u8;8];8]> , dkv : [u8;64] ) -> Vec<[[u8;8];8]> {
     let blocks_size = blocks.len() ;
     let (im1,im2) = im1_im2(dkv) ;
-    let mut w: Vec<[[u8;8];8]> = Vec::new() ;
+    //let mut w: Vec<[[u8;8];8]> = Vec::new() ;
     let mut w_t : Vec<[[u8;8];8]> = Vec::new() ;
-    let mut encrypted_image : Vec<[[u8;8];8]> = Vec::new() ;
-    w.push(encrypt_block(*blocks.get(0).expect("block does not exist"), dkv, im1));
-
-    for i in 1..blocks_size {
-        w.push(encrypt_block(*blocks.get(i-1).expect("block does not exist"), dkv, *blocks.get(i).expect("block does not exist")))
+    for i in 0..blocks_size {
+        if i == 0 {
+            w_t.push(encrypt_block(blocks[i], dkv, im1));
+        }else {
+            w_t.push(encrypt_block(blocks[i], dkv, blocks[i-1]));
+        }
     }
-
-    for t in w {
-        w_t.push(transpose(t));
+   /*
+    for block in blocks {
+        w_t.push(transpose(block));
     }
-    encrypted_image.push(encrypt_block(*w_t.get(blocks_size-1).expect("block does not exist"), dkv, im2));
+    for i in 0..blocks_size {
+        if i == 0 {
+            w_t[i] = encrypt_block(w_t[i], dkv, im2);
+        }else {
+            w_t[i] = encrypt_block(w_t[i], dkv, w_t[i-1]);
+        }
 
-    for i in (0..blocks_size-1).rev() {
-
-         encrypted_image.push(encrypt_block(*w_t.get(i).expect("block does not exist"),dkv,*w_t.get(i+1).expect("block does not exist")))
 
         }
-    encrypted_image
+    w_t
+    */
+        w_t
     }
 
 
 
 // decrypt image
-pub fn decrypt_image(blocks : Vec<[[u8;8];8]> , dkv : [u8;64]) -> Vec<[[u8;8];8]>{
+pub fn decrypt_image(blocks: Vec<[[u8;8];8]>, dkv : [u8;64]) -> Vec<[[u8;8];8]>{
     let blocks_size = blocks.len() ;
     let (im1,im2) = im1_im2(dkv) ;
-    let mut w: Vec<[[u8;8];8]> = Vec::new() ;
     let mut w_t : Vec<[[u8;8];8]> = Vec::new() ;
-    let mut decrypted_image : Vec<[[u8;8];8]> = Vec::new() ;
-    w.push(decrypt_block(*blocks.get(0).expect("block does not exist"), dkv, im2));
 
-    for i in 1..blocks_size {
-
-            w.push(decrypt_block(*blocks.get(i).expect("block does not exist"), dkv, *blocks.get(i-1).expect("block does not exist")))
-
-    }
-    for t in w {
-        w_t.push(transpose(t));
-
-    }
-    decrypted_image.push(decrypt_block(*w_t.get(blocks_size-1).expect("block does not exist"),dkv,im1));
-
-    for i in (0..blocks_size-1).rev() {
-           decrypted_image.push(decrypt_block(*w_t.get(i+1).expect("block does not exist"),dkv,*w_t.get(i).expect("block does not exist")))
+    for i in 0..blocks_size {
+        if i == 0 {
+            w_t.push( decrypt_block(blocks[i], dkv, im1));
+        }else {
+            w_t.push(decrypt_block(blocks[i], dkv, w_t[i-1]));
         }
+    }
 
-    decrypted_image
+
+    /*
+    for block in blocks {
+        w_t.push(transpose(block));
+    }
+
+    for i in 0..blocks_size {
+        if i == 0  {
+            w_t[i] = decrypt_block(w_t[i],dkv,im1);
+        }else {
+            w_t[i] = decrypt_block(w_t[i],dkv,w_t[i-1]);
+        }
+    }
+
+    w_t
+     */
+    w_t
 }
 // matrix multiplication yes . (first)
 fn mat_mul(a : [[i32;8];8], b : [[u8;8];8]) -> [[u8;8];8] {
@@ -90,6 +101,29 @@ fn mat_mul(a : [[i32;8];8], b : [[u8;8];8]) -> [[u8;8];8] {
             for k in 0..8{
                 res[i][j] = res[i][j].overflowing_add(a[i][k].overflowing_mul(b[k][j] as i32).0 as u8).0
             }
+        }
+    }
+    res
+}
+fn _mat_mul (a : [[i32;8];8] , b : [[u8;8];8] ) -> [[u8;8];8] {
+    let mut res = [[0u8;8];8];
+    let mut b_i32 = [[0i32;8];8];
+    let mut temp = [[0i32;8];8];
+    for i in 0..8 {
+        for j in 0..8 {
+            b_i32[i][j] = b[i][j] as i32
+        }
+    }
+    for i in 0..8 {
+        for j in 0..8 {
+            for k in 0..8 {
+                temp[i][j] += a[i][k] * b_i32[k][j]
+            }
+        }
+    }
+    for i in 0..8 {
+        for j in 0..8 {
+            res[i][j] = temp[i][j] as u8
         }
     }
     res

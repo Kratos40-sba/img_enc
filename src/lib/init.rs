@@ -131,7 +131,7 @@ pub fn s_box_inv_s_box (dkv : [u8;64]) -> ([u8;256],[u8;256]) {
             // change the lsb to 0
             r[ir] = r[ir] ^ (r[ir] & 1);
             ir += 1 ;
-        }else {
+        }else if it < 4 {
             t[it] = *k;
             // change lsb to 1
             t[it] |= 1;
