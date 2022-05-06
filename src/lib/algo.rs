@@ -1,3 +1,4 @@
+use std::collections::VecDeque;
 use crate::init::{array_to_matrix, g_inv_g, im1_im2, matrix_to_array, s_box_inv_s_box, xor};
 
 // encrypt block .
@@ -29,33 +30,36 @@ fn decrypt_block(encrypted_block : [[u8;8];8] , dkv : [u8;64] , matrix : [[u8;8]
     decrypted_block
 }
 // encrypt image .
-pub fn encrypt_image(mut blocks : Vec<[[u8;8];8]> , dkv : [u8;64] ) -> Vec<[[u8;8];8]> {
+pub fn encrypt_image( blocks : Vec<[[u8;8];8]> , dkv : [u8;64] ) -> Vec<[[u8;8];8]> {
     let blocks_size = blocks.len() ;
     let (im1,im2) = im1_im2(dkv) ;
-    //let mut w: Vec<[[u8;8];8]> = Vec::new() ;
+    let mut w: Vec<[[u8;8];8]> = Vec::new() ;
     let mut w_t : Vec<[[u8;8];8]> = Vec::new() ;
     for i in 0..blocks_size {
         if i == 0 {
-            w_t.push(encrypt_block(blocks[i], dkv, im1));
+            w.push(encrypt_block(blocks[i], dkv, im1));
         }else {
-            w_t.push(encrypt_block(blocks[i], dkv, blocks[i-1]));
+            w.push(encrypt_block(blocks[i], dkv, w[i-1]));
         }
     }
-   /*
-    for block in blocks {
-        w_t.push(transpose(block));
+    for t in w {
+        w_t.push(transpose(t))
     }
-    for i in 0..blocks_size {
-        if i == 0 {
-            w_t[i] = encrypt_block(w_t[i], dkv, im2);
+    for i in (0..blocks_size).rev() {
+        if i == blocks_size - 1 {
+            w_t[i] = encrypt_block(
+                *w_t.get(i).expect("block does not exist"),
+                dkv,
+            im2)
         }else {
-            w_t[i] = encrypt_block(w_t[i], dkv, w_t[i-1]);
-        }
+            w_t[i] = encrypt_block(
+                *w_t.get(i+1).expect("block does not exist") ,
+                dkv ,
+                *w_t.get(i).expect("block does not exist")
+            )
 
-
         }
-    w_t
-    */
+    }
         w_t
     }
 
@@ -65,33 +69,45 @@ pub fn encrypt_image(mut blocks : Vec<[[u8;8];8]> , dkv : [u8;64] ) -> Vec<[[u8;
 pub fn decrypt_image(blocks: Vec<[[u8;8];8]>, dkv : [u8;64]) -> Vec<[[u8;8];8]>{
     let blocks_size = blocks.len() ;
     let (im1,im2) = im1_im2(dkv) ;
-    let mut w_t : Vec<[[u8;8];8]> = Vec::new() ;
-
+    let  mut w_t : Vec<[[u8;8];8]> = Vec::new() ;
+    let  mut w : VecDeque<[[u8;8];8]> = VecDeque::new() ;
+    let mut decrypted_image : Vec<[[u8;8];8]> = Vec::new() ;
+    // first round of decryption process
+    for i in (0..blocks_size).rev() {
+        if i == blocks_size - 1 {
+            w.push_front(decrypt_block(
+                *blocks.get(i).expect("block does not exist "),
+                dkv ,
+                im2
+            ))
+        } else {
+            w.push_front(decrypt_block(
+                *blocks.get(i).expect("block does not exist"),
+                dkv ,
+                *blocks.get(i+1).expect("block does not exist")
+            ))
+        }
+    }
+    for t in Vec::from(w) {
+        w_t.push(transpose(t))
+    }
     for i in 0..blocks_size {
         if i == 0 {
-            w_t.push( decrypt_block(blocks[i], dkv, im1));
+            decrypted_image.push(decrypt_block(
+                *w_t.get(i).expect("block does not exist") ,
+                dkv ,
+                im1
+            ))
         }else {
-            w_t.push(decrypt_block(blocks[i], dkv, w_t[i-1]));
+            decrypted_image.push(decrypt_block(
+                *w_t.get(i).expect("block does not exist") ,
+                dkv ,
+                *w_t.get(i-1).expect("block does not exist")
+            ))
         }
     }
 
-
-    /*
-    for block in blocks {
-        w_t.push(transpose(block));
-    }
-
-    for i in 0..blocks_size {
-        if i == 0  {
-            w_t[i] = decrypt_block(w_t[i],dkv,im1);
-        }else {
-            w_t[i] = decrypt_block(w_t[i],dkv,w_t[i-1]);
-        }
-    }
-
-    w_t
-     */
-    w_t
+    decrypted_image
 }
 // matrix multiplication yes . (first)
 fn mat_mul(a : [[i32;8];8], b : [[u8;8];8]) -> [[u8;8];8] {
