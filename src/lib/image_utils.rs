@@ -21,7 +21,7 @@ pub fn decompose (path : &str) -> ( Vec<[[u8;8];8]> , u32 , u32) {
 }
 // vec<[[u8;8];8]> to image .
 pub fn compose_image (decomposed_image : Vec<[[u8;8];8]> , w : u32 , h : u32 , image_name : &str) {
-    let mut image_to_write = GrayImage::new(*&w, *&h) ;
+    let mut image_to_write = GrayImage::new(w, h) ;
     let mut counter = 0 ;
     for i in (0..h).step_by(8) {
         for j in (0..w).step_by(8){

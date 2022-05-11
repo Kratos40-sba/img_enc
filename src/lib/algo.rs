@@ -11,9 +11,7 @@ fn encrypt_block(sub_image : [[u8;8];8] , dkv : [u8;64] , matrix : [[u8;8];8]) -
     }
     let z = array_to_matrix(&y_arr);
     let (g,_) = g_inv_g(dkv);
-    let encrypted_sub_image = mat_mul(g,z);
-    encrypted_sub_image
-
+    mat_mul(g,z)
 }
 // decrypt block .
 fn decrypt_block(encrypted_block : [[u8;8];8] , dkv : [u8;64] , matrix : [[u8;8];8]) -> [[u8;8];8] {
@@ -26,8 +24,8 @@ fn decrypt_block(encrypted_block : [[u8;8];8] , dkv : [u8;64] , matrix : [[u8;8]
         d_array[i] = inv_s_box[d_array[i] as usize];
     }
     let e = array_to_matrix(&d_array);
-    let decrypted_block = xor(e,matrix);
-    decrypted_block
+    xor(e,matrix)
+
 }
 // encrypt image .
 pub fn encrypt_image( blocks : Vec<[[u8;8];8]> , dkv : [u8;64] ) -> Vec<[[u8;8];8]> {
@@ -114,36 +112,14 @@ fn mat_mul(a : [[i32;8];8], b : [[u8;8];8]) -> [[u8;8];8] {
     let mut res : [[u8;8];8] = [[0u8;8];8] ;
     for i in 0..8{
         for j in 0..8{
-            for k in 0..8{
+            for (k,_) in b.iter().enumerate(){
                 res[i][j] = res[i][j].overflowing_add(a[i][k].overflowing_mul(b[k][j] as i32).0 as u8).0
             }
         }
     }
     res
 }
-fn _mat_mul (a : [[i32;8];8] , b : [[u8;8];8] ) -> [[u8;8];8] {
-    let mut res = [[0u8;8];8];
-    let mut b_i32 = [[0i32;8];8];
-    let mut temp = [[0i32;8];8];
-    for i in 0..8 {
-        for j in 0..8 {
-            b_i32[i][j] = b[i][j] as i32
-        }
-    }
-    for i in 0..8 {
-        for j in 0..8 {
-            for k in 0..8 {
-                temp[i][j] += a[i][k] * b_i32[k][j]
-            }
-        }
-    }
-    for i in 0..8 {
-        for j in 0..8 {
-            res[i][j] = temp[i][j] as u8
-        }
-    }
-    res
-}
+
 fn transpose(mat : [[u8;8];8]) -> [[u8;8];8] {
     let mut mat_t = [[0u8;8];8];
     for i in 0..8 {
