@@ -3,6 +3,7 @@ name = "img_enc"
 version = "0.1.0"
 edition = "2021"
 author = "Kratos40-sba"
+repository = "https://github.com/Kratos40-sba/img_enc"
 include = [
     "src/**/*" ,
     "Cargo.toml",
