@@ -19,6 +19,10 @@ path = "./src/lib/mod.rs"
 [[bin]]
 name = "test"
 path = "./src/test.rs"
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
 [dependencies]
 image = "0.24.1"
 sha2 = "0.10.2"
