@@ -10,7 +10,7 @@ include = [
     "Lena_512_rust.bmp"
 ]
 license = "MIT"
-categories = ["Encryption , Cryptography"]
+categories = ["cryptography, algorithms"]
 description = "2 rounds encryption scheme"
 keywords = ["Encryption","Symmetric-Encryption"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
