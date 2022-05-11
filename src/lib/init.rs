@@ -203,6 +203,6 @@ mod tests {
         dbg!(im1);
         dbg!(im2);
     }
-    // test g and inv_g / s_box and inv_s_box
+
 
 }
