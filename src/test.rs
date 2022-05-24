@@ -1,13 +1,15 @@
 use img_enc::algo::{decrypt_image, encrypt_image};
-use img_enc::analysis::{ ks_ps, robustness_analysis};
+use img_enc::analysis::{key_sensitivity_analysis, ks_ps, robustness_analysis};
 use img_enc::image_utils::{compose_image, decompose};
 use img_enc::init::dkv;
 
 fn main() {
+  /*
   let (npcr,uaci,ps) = robustness_analysis("lena");
   println!("NPCR = {} \n UACI = {}\n PS = {}",npcr , uaci , ps);
-
-
+   */
+  let ks = key_sensitivity_analysis("lena.bmp");
+  println!("Key Sensitivity mean = {}" , ks);
 }
 /*
  let m_k : [u8;8] = [101,20,30,40,50,60,128,99];

@@ -174,7 +174,33 @@ pub fn robustness_analysis (image_name : &str) -> (f32 , f32 , f32) {
     }
     (npcr_avg/100.0 , uaci_avg/100.0 ,ps_avg/100.0 )
 }
-
+pub fn key_sensitivity_analysis(path : &str) -> f32{
+    let mut mean : f32 = 0.0 ;
+    let mut arr_result : [f32;100] = [0f32;100] ;
+    for i in 0..100 {
+        let mut rnd = rand::thread_rng() ;
+        let _init_array : [f32;32] = rnd.gen();
+        let mut dkv : [u8;64] = [0u8;64] ;
+        let mut dkv2 = dkv ;
+        dkv2[63] += 1 ;
+        rnd.fill(&mut dkv) ;
+        compose_image(
+            encrypt_image(
+                decompose(path).0 , dkv ) ,
+            decompose(path).1 , decompose(path).2
+            , "c1"
+        );
+        compose_image(
+            encrypt_image(
+                decompose(path).0 , dkv2 ) ,
+            decompose(path).1 , decompose(path).2
+            , "c2"
+        );
+        arr_result[i] = ks_ps("c1.bmp" , "c2.bmp") ;
+        mean += arr_result[i]
+    }
+    mean/100.0
+}
 
 // correlation
 // choose N random pixels
