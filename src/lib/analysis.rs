@@ -6,7 +6,7 @@ use crate::algo::encrypt_image;
 use crate::image_utils::{compose_image, decompose};
 use crate::init::dkv;
 
-fn image_to_array(path : &str) -> Vec<u8> {
+pub fn image_to_array(path : &str) -> Vec<u8> {
     image::open(path).unwrap()
         .to_luma8().to_vec()
 }
@@ -56,7 +56,7 @@ fn entropy_test(path:&str) -> f32 {
     }
     result
 }
-pub fn uniformity_analysis(path : &str) -> f32 {
+pub fn uniformity_analysis(path : &str) -> (f32 , [f32;100]) {
     let mut mean : f32 = 0.0 ;
     let mut arr_result : [f32;100] = [0f32;100] ;
     for i in 0..100 {
@@ -67,14 +67,14 @@ pub fn uniformity_analysis(path : &str) -> f32 {
         compose_image(
             encrypt_image(
                 decompose(path).0 ,
-                dkv) , decompose(path).1 , decompose(path).2 , "encrypted");
+                dkv).0 , decompose(path).1 , decompose(path).2 , "encrypted");
         let chi_test : f32 = chi_square_test("encrypted.bmp");
         arr_result[i] = chi_test ;
         mean += arr_result[i]
     }
-    mean/100.0
+        (mean/100.0 , arr_result)
 }
-pub fn entropy_analysis(path : &str) -> f32 {
+pub fn entropy_analysis(path : &str) -> (f32,[f32;100]) {
     let mut mean : f32 = 0.0 ;
     let mut arr_result : [f32;100] = [0f32;100] ;
     for i in 0..100 {
@@ -84,7 +84,7 @@ pub fn entropy_analysis(path : &str) -> f32 {
         rnd.fill(&mut dkv) ;
         compose_image(
             encrypt_image(
-                decompose(path).0 , dkv ) ,
+                decompose(path).0 , dkv ).0 ,
             decompose(path).1 , decompose(path).2
                 , "encrypted"
             );
@@ -92,13 +92,13 @@ pub fn entropy_analysis(path : &str) -> f32 {
         arr_result[i] = entropy_test ;
         mean += arr_result[i]
     }
-    mean/100.0
+    (mean/100.0,arr_result)
 }
 fn random_pixel_change(path : &str) {
     let mut image_matrix = image_to_matrix(path) ;
     let mut rnd = rand::thread_rng();
     let index_pix: u8 = rnd.gen() ;
-    image_matrix[index_pix  as usize][index_pix  as usize ]  -= 1 ;
+    image_matrix[index_pix  as usize][index_pix  as usize ]  += 1 ;
     let mut image_to_write = GrayImage::new(256, 256) ;
     for x in 0..256 {
         for y in 0..256 {
@@ -147,17 +147,20 @@ fn npcr_uaci (c1 : &str , c2 : &str) -> (f32,f32){
     }
     (npcr * factor ,uaci * factor)
 }
-pub fn robustness_analysis (image_name : &str) -> (f32 , f32 , f32) {
+pub fn robustness_analysis (image_name : &str) -> (f32 , f32 , f32 , [f32;100] , [f32;100], [f32;100]) {
+    let mut arr_npcr : [f32;100] = [0f32;100] ;
+    let mut arr_uaci : [f32;100] = [0f32;100] ;
+    let mut arr_ps : [f32;100] = [0f32;100] ;
     let (mut npcr_avg , mut uaci_avg, mut ps_avg) = (0f32,0f32,0f32) ;
     for i in 0..100 {
         random_pixel_change(image_name);
         let m_k : [u8;8] = [101,20,30,40,50,60,128,99];
-        let dkv = dkv(&m_k) ;
+        let dkv = dkv(&m_k , image_name) ;
         let (blocks,w,h) = decompose(
             format!("modified_{}.bmp",image_name).as_mut_str()
         );
         let encrypted_blocks = encrypt_image(blocks,dkv);
-        compose_image(encrypted_blocks.clone(),w,h,
+        compose_image(encrypted_blocks.0.clone(),w,h,
                       format!("modified_encrypted_{}",image_name).as_mut_str());
         let (npcr,uaci) = npcr_uaci(
             format!("encrypted_{}",image_name).as_mut_str() ,
@@ -166,15 +169,18 @@ pub fn robustness_analysis (image_name : &str) -> (f32 , f32 , f32) {
             format!("encrypted_{}.bmp",image_name).as_mut_str() ,
             format!("modified_encrypted_{}.bmp",image_name).as_mut_str()
         );
-        println!("npcr = {} uaci = {} PS= {}",npcr , uaci , ps);
-        npcr_avg += npcr ;
-        uaci_avg += uaci ;
-        ps_avg += ps
+        arr_npcr[i] = npcr  ;
+        arr_uaci[i] = uaci ;
+        arr_ps[i] = ps  ;
+        npcr_avg += arr_npcr[i]  ;
+        uaci_avg += arr_uaci[i] ;
+        ps_avg += arr_ps[i]
 
     }
-    (npcr_avg/100.0 , uaci_avg/100.0 ,ps_avg/100.0 )
+    (npcr_avg/100.0 , uaci_avg/100.0 ,ps_avg/100.0 ,arr_npcr,arr_uaci,arr_ps )
 }
-pub fn key_sensitivity_analysis(path : &str) -> f32{
+
+pub fn key_sensitivity_analysis(path : &str) -> (f32,[f32;100]){
     let mut mean : f32 = 0.0 ;
     let mut arr_result : [f32;100] = [0f32;100] ;
     for i in 0..100 {
@@ -186,41 +192,19 @@ pub fn key_sensitivity_analysis(path : &str) -> f32{
         rnd.fill(&mut dkv) ;
         compose_image(
             encrypt_image(
-                decompose(path).0 , dkv ) ,
+                decompose(path).0 , dkv ).0 ,
             decompose(path).1 , decompose(path).2
             , "c1"
         );
         compose_image(
             encrypt_image(
-                decompose(path).0 , dkv2 ) ,
+                decompose(path).0 , dkv2 ).0 ,
             decompose(path).1 , decompose(path).2
             , "c2"
         );
         arr_result[i] = ks_ps("c1.bmp" , "c2.bmp") ;
         mean += arr_result[i]
     }
-    mean/100.0
+    (mean/100.0,arr_result)
 }
 
-// correlation
-// choose N random pixels
-/*
- Matlab code :
- lena = double(imread('lena.bmp'))
- // horizontal
- x =  lena(:,1:end-1)
- y =  lena(:,2:end)
- rxy = corr2(x,y) -> h_corr value = 0.9430 /  0.0045
- scatter(x(:),y(:)) -> plot
- // vertical
- x =  lena(1:end-1,:)
- y =  lena(2:end,:)
- rxy = corr2(x,y) -> v_corr value =  0.9712 / -0.0025
- scatter(x(:),y(:)) -> plot
- // diagonal
- x = lena(1:end-1,1:end-1)
- y = lena(2:end,2:end)
- rxy = corr2(x,y) -> d_corr value = 0.9203 /   9.9148e-04
-
- scatter(x(:),y(:)) -> plot
- */

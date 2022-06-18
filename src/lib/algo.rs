@@ -1,4 +1,6 @@
 use std::collections::VecDeque;
+use ring::error::Unspecified;
+use ring::hmac;
 use crate::init::{array_to_matrix, g_inv_g, im1_im2, matrix_to_array, s_box_inv_s_box, xor};
 
 // encrypt block .
@@ -28,7 +30,7 @@ fn decrypt_block(encrypted_block : [[u8;8];8] , dkv : [u8;64] , matrix : [[u8;8]
 
 }
 // encrypt image .
-pub fn encrypt_image( blocks : Vec<[[u8;8];8]> , dkv : [u8;64] ) -> Vec<[[u8;8];8]> {
+pub fn encrypt_image( blocks : Vec<[[u8;8];8]> , dkv : [u8;64] ) ->( Vec<[[u8;8];8]> , hmac::Tag) {
     let blocks_size = blocks.len() ;
     let (im1,im2) = im1_im2(dkv) ;
     let mut w: Vec<[[u8;8];8]> = Vec::new() ;
@@ -58,13 +60,36 @@ pub fn encrypt_image( blocks : Vec<[[u8;8];8]> , dkv : [u8;64] ) -> Vec<[[u8;8];
 
         }
     }
-        w_t
+    let mut last_block = [0u8;64];
+    let mut s = 0 ;
+    for i in 0..8 {
+        for j in 0..8 {
+            last_block[s] = w_t.last().expect("last block is empty")[i][j] ;
+            s += 1 ;
+        }
+    }
+        let auth_key = hmac::Key::new(hmac::HMAC_SHA512 , &dkv);
+        let tag = hmac::sign(&auth_key,&last_block);
+    (w_t,tag)
     }
 
 
 
 // decrypt image
-pub fn decrypt_image(blocks: Vec<[[u8;8];8]>, dkv : [u8;64]) -> Vec<[[u8;8];8]>{
+pub fn decrypt_image(blocks: Vec<[[u8;8];8]>, dkv : [u8;64], encrypted_blocks: Vec<[[u8; 8]; 8]> , tag : hmac::Tag) -> Vec<[[u8;8];8]>{
+    let mut last_block = [0u8;64];
+    let mut s = 0 ;
+    for i in 0..8 {
+        for j in 0..8 {
+            last_block[s] = blocks.last().expect("last block is empty")[i][j] ;
+            s += 1 ;
+        }
+    }
+    let auth_key = hmac::Key::new(hmac::HMAC_SHA512 , &dkv);
+    match hmac::verify(&auth_key,&last_block,tag.as_ref()) {
+        Ok(_) => {println!("image is authenticated")}
+        Err(_) => {println!("image has been altered")}
+    }
     let blocks_size = blocks.len() ;
     let (im1,im2) = im1_im2(dkv) ;
     let  mut w_t : Vec<[[u8;8];8]> = Vec::new() ;
@@ -136,7 +161,7 @@ mod tests {
     #[test]
     fn test_encrypting_decrypting_one_block () {
         let m_k : [u8;8] = [0xb1, 0xcc, 0x58, 0x91, 0x44, 0xab, 0xca, 0x12];
-        let dkv = dkv(&m_k) ;
+        let dkv = dkv(&m_k ,"lena.bmp") ;
         let expected_matrix : [[u8;8];8] = [
             [0,1,2,3,4,5,6,7],
             [8,9,10,11,12,13,14,15],

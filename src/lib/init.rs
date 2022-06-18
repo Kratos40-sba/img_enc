@@ -1,12 +1,23 @@
 use sha2::{Digest, Sha512};
+use crate::analysis::image_to_array;
 
 // generate DKv
 // Dkv generates by using an master key
-pub fn dkv (master_key : &[u8;8]) -> [u8;64] {
+pub fn dkv (master_key : &[u8;8] , path : &str) -> [u8;64] {
     let mut hasher = Sha512::new() ;
+    let mut hasher_2 = Sha512::new();
+    let img = image_to_array(path);
     hasher.update(master_key);
+    hasher_2.update(img);
     let result = hasher.finalize() ;
-    <[u8; 64]>::try_from(result.as_slice()).unwrap()
+    let result_2 = hasher_2.finalize() ;
+    let v1 = <[u8; 64]>::try_from(result.as_slice()).unwrap() ;
+    let v2 = <[u8; 64]>::try_from(result_2.as_slice()).unwrap() ;
+    let mut v3 = [0u8;64];
+    for i in 0..64 {
+        v3[i] = v1[i] ^ v2[i] ;
+    }
+    v3
 }
 // reshaping from array to matrix and from matrix to array
 pub fn array_to_matrix (array : &[u8;64]) -> [[u8;8];8] {
@@ -159,7 +170,7 @@ mod tests {
     #[test]
     fn dkv_test (){
         let m_k : [u8;8] = [0xb1, 0xcc, 0x58, 0x91, 0x44, 0xab, 0xca, 0x12];
-        let dkv = dkv(&m_k) ;
+        let dkv = dkv(&m_k,"lena.bmp") ;
         assert_eq!(dkv.len(),64)
     }
     #[test]
@@ -198,7 +209,7 @@ mod tests {
     #[test]
     fn print_im1_im2 () {
         let m_k : [u8;8] = [0xb1, 0xcc, 0x58, 0x91, 0x44, 0xab, 0xca, 0x12];
-        let dkv = dkv(&m_k) ;
+        let dkv = dkv(&m_k , "lena.bmp") ;
         let (im1,im2) = im1_im2(dkv);
         dbg!(im1);
         dbg!(im2);
